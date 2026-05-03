@@ -29,5 +29,6 @@ module.exports = {
 
         await interaction.reply({ content: `Joined **${voiceChannel.name}**!`, flags: [1 << 6] });
         console.log(`successfully executed join command`);
+        console.log(`${interaction.client.user.tag} joined the voice channel`);
     }
 };

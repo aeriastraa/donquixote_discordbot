@@ -1,6 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { getVoiceConnection } = require('@discordjs/voice');
-
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('leave')
@@ -15,5 +14,6 @@ module.exports = {
 
         connection.destroy();
         await interaction.reply({ content: 'Left the voice channel!', flags: [1 << 6] });
+        console.log(`${interaction.client.user.tag} left the voice channel`);
     }
 };
