@@ -11,6 +11,12 @@ module.exports = {
         if (!connection) {
             return interaction.reply({ content: "I'm not in a voice channel!", flags: [1 << 6] });
         }
+        const listeners = interaction.client.voiceListeners;
+        if (listeners && listeners.has(interaction.guildId)) {
+            const { keepAlive } = listeners.get(interaction.guildId);
+            if (keepAlive) clearInterval(keepAlive);
+            listeners.delete(interaction.guildId);
+        }
 
         connection.destroy();
         await interaction.reply({ content: 'Left the voice channel!', flags: [1 << 6] });

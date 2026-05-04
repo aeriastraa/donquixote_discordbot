@@ -30,6 +30,14 @@ module.exports = {
 
         // Fix: save channel reference immediately
         const textChannel = interaction.channel;
+        // Keepalive — prevent Discord from disconnecting idle bot
+        const keepAlive = setInterval(() => {
+            if (connection.state.status !== 'destroyed') {
+                connection.receiver.speaking; // poke the connection
+            } else {
+                clearInterval(keepAlive);
+            }
+        }, 30000); // every 30 seconds
 
         const receiver = connection.receiver;
         const activeSpeakers = new Set();
@@ -119,7 +127,8 @@ module.exports = {
         interaction.client.voiceListeners = interaction.client.voiceListeners || new Map();
         interaction.client.voiceListeners.set(interaction.guildId, {
             connection,
-            channelId: interaction.channelId
+            channelId: interaction.channelId,
+            keepAlive,
         });
     }
 };

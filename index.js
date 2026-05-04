@@ -2,7 +2,14 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { REST, Routes } = require('discord.js');
-
+const {
+    createAudioPlayer,
+    createAudioResource,
+    AudioPlayerStatus,
+    joinVoiceChannel
+} = require('@discordjs/voice');
+const { execSync } = require('child_process');
+const { VOICE_MAP, DEFAULT_VOICE } = require('./utils/voices');
 const deployCommands = async () => {
     try {
         const commands = [];
@@ -146,5 +153,57 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 
+
+client.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot) return;
+
+    const ttsListeners = client.ttsListeners;
+    if (!ttsListeners || !ttsListeners.has(message.guildId)) return;
+
+    const session = ttsListeners.get(message.guildId);
+    if (message.channelId !== session.textChannelId) return;
+
+    const text = message.content.trim();
+    if (!text) return;
+
+    const tmpDir = path.join(__dirname, 'tmp');
+    fs.mkdirSync(tmpDir, { recursive: true });
+    const outputPath = path.join(tmpDir, `tts-${Date.now()}.mp3`);
+
+    try {
+        // Get user's saved voice from utils/voices.js
+        const userVoices = client.userVoices || new Map();
+        const userVoice = userVoices.get(message.author.id);
+        const voice = userVoice?.voice || DEFAULT_VOICE;
+        const name = userVoice?.name || '🇺🇸 English (Female)';
+
+        console.log(`[🔊 TTS] ${message.member.displayName} (${name}): "${text}"`);
+
+        execSync(
+            `edge-tts --voice "${voice}" --text "${text}" --write-media "${outputPath}"`,
+            { timeout: 15000 }
+        );
+
+        if (!fs.existsSync(outputPath)) throw new Error('TTS file not created');
+
+        const player = createAudioPlayer();
+        const resource = createAudioResource(outputPath);
+        session.connection.subscribe(player);
+        player.play(resource);
+        
+        player.on(AudioPlayerStatus.Idle, () => {
+            fs.unlink(outputPath, () => {});
+        });
+
+        player.on('error', (e) => {
+            console.error('[❌ TTS Player]', e.message);
+            fs.unlink(outputPath, () => {});
+        });
+
+    } catch (e) {
+        console.error('[❌ TTS Error]', e.message);
+        if (fs.existsSync(outputPath)) fs.unlink(outputPath, () => {});
+    }
+});
 
 client.login(process.env.BOT_TOKEN);

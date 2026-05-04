@@ -12,11 +12,11 @@ module.exports = {
             return interaction.reply({ content: '❌ Not currently listening in this server.', ephemeral: true });
         }
 
-        const { connection } = listeners.get(interaction.guildId);
-
+        const { connection, keepAlive } = listeners.get(interaction.guildId);
+        // Stop the keepalive interval
+        if (keepAlive) clearInterval(keepAlive);
         // Stop receiving audio without leaving the channel
-        const receiver = connection.receiver;
-        receiver.speaking.removeAllListeners();
+        connection.receiver.speaking.removeAllListeners();
 
         listeners.delete(interaction.guildId);
 
