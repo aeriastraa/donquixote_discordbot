@@ -1,9 +1,10 @@
 const fs = require('fs');
-const path = require('path');
 const { execSync } = require('child_process');
+const Groq = require('groq-sdk');
 
-const WHISPER_EXE = process.env.WHISPER_EXE || 'D:\\DiscordBot_projects\\Donquixote\\whisper.cpp\\build\\bin\\Release\\whisper-cli.exe';
-const WHISPER_MODEL = process.env.WHISPER_MODEL || 'D:\\DiscordBot_projects\\Donquixote\\whisper.cpp\\models\\ggml-base.en.bin';
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+const JUNK_PATTERNS = /^\[.*\]$|^\(.*\)$|^$|^\s*$/i;
 
 async function transcribeAudio(pcmPath, userId) {
     const wavPath = pcmPath.replace('.pcm', '.wav');
@@ -12,8 +13,9 @@ async function transcribeAudio(pcmPath, userId) {
         if (!fs.existsSync(pcmPath)) return null;
 
         const pcmSize = fs.statSync(pcmPath).size;
+        if (pcmSize < 3000) return null;
 
-        // Convert PCM → WAV, suppress ffmpeg output
+        // Convert PCM → WAV
         execSync(
             `ffmpeg -y -f s16le -ar 48000 -ac 2 -i "${pcmPath}" "${wavPath}" -loglevel quiet`,
             { stdio: 'ignore' }
@@ -23,21 +25,21 @@ async function transcribeAudio(pcmPath, userId) {
 
         const wavSize = fs.statSync(wavPath).size;
         if (wavSize < 5000) {
-            console.log(`[🔇 Silence] Skipped (too small)`);
+            console.log(`[🔇 Silence] Skipped`);
             return null;
         }
 
-        // Run whisper, redirect stderr to suppress internal logs
-        const result = execSync(
-            `"${WHISPER_EXE}" -m "${WHISPER_MODEL}" -f "${wavPath}" --no-timestamps -nt 2>nul`,
-            { encoding: 'utf8', timeout: 30000 }
-        );
+        // Send to Groq Whisper API
+        const transcription = await groq.audio.transcriptions.create({
+            file: fs.createReadStream(wavPath),
+            model: 'whisper-large-v3-turbo',
+        });
 
-        const text = result.trim();
+        const text = transcription.text?.trim();
+        if (!text) return null;
 
-        // Filter junk results
-        const junkPatterns = /^\[.*\]$|^\(.*\)$|^$|^\s*$/i;
-        if (junkPatterns.test(text)) {
+        // Filter junk
+        if (JUNK_PATTERNS.test(text)) {
             console.log(`[🔇 Filtered] "${text}"`);
             return null;
         }
@@ -46,7 +48,7 @@ async function transcribeAudio(pcmPath, userId) {
         return text;
 
     } catch (e) {
-        console.error('[❌ Transcribe Error]', e.message);
+        console.error('[❌ Groq Error]', e.message);
         return null;
     } finally {
         if (fs.existsSync(wavPath)) fs.unlink(wavPath, () => {});

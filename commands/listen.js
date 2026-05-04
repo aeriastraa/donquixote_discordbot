@@ -28,21 +28,25 @@ module.exports = {
 
         await interaction.reply(`🎙️ Now listening in **${voiceChannel.name}**. Transcriptions will appear here.`);
 
+        // Fix: save channel reference immediately
+        const textChannel = interaction.channel;
+
         const receiver = connection.receiver;
         const activeSpeakers = new Set();
+        const userMessageBuffer = new Map();
+        const MERGE_WINDOW_MS = 30000;
 
         receiver.speaking.on('start', async (userId) => {
-            // Skip if already recording this user
             if (activeSpeakers.has(userId)) return;
             activeSpeakers.add(userId);
 
             const user = await interaction.client.users.fetch(userId);
-            console.log(`${user.tag} started speaking`);
+            console.log(`[🎙️] ${user.displayName} started speaking`);
 
             const audioStream = receiver.subscribe(userId, {
                 end: {
                     behavior: EndBehaviorType.AfterSilence,
-                    duration: 1500,
+                    duration: 3000,
                 },
             });
 
@@ -57,39 +61,61 @@ module.exports = {
                 rate: 48000,
             });
 
-            // Handle errors on each stream to prevent crash
             audioStream.on('error', (e) => console.log('Audio stream error:', e.code));
             opusDecoder.on('error', (e) => console.log('Opus decoder error:', e.code));
             writeStream.on('error', (e) => console.log('Write stream error:', e.code));
 
-            // Pipe manually instead of using pipeline()
             audioStream.pipe(opusDecoder).pipe(writeStream);
+            audioStream.on('close', () => opusDecoder.end());
+            opusDecoder.on('end', () => writeStream.end());
 
-            // When audio ends, transcribe
             writeStream.on('finish', async () => {
                 activeSpeakers.delete(userId);
 
                 try {
-                    const transcript = await transcribeAudio(outputPath, userId);
-                    if (transcript && transcript.trim()) {
-                        await interaction.channel.send(`🗣️ **${user.displayName}**: ${transcript}`);
+                    const text = await transcribeAudio(outputPath, userId);
+                    if (!text || !text.trim()) return;
+
+                    const buffer = userMessageBuffer.get(userId);
+
+                    if (buffer) {
+                        // Same user spoke again — append to existing message
+                        clearTimeout(buffer.timer);
+
+                        const existingMsg = await textChannel.messages.fetch(buffer.messageId);
+                        const newContent = `🗣️ **${user.displayName}**: ${buffer.text} ${text}`;
+                        await existingMsg.edit(newContent);
+                        console.log(`[✏️ Edited] ${user.displayName}: ${text}`);
+
+                        buffer.text = `${buffer.text} ${text}`;
+                        buffer.timer = setTimeout(() => {
+                            userMessageBuffer.delete(userId);
+                        }, MERGE_WINDOW_MS);
+
+                    } else {
+                        // New message for this user
+                        const sent = await textChannel.send(
+                            `🗣️ **${user.displayName}**: ${text}`
+                        );
+                        console.log(`[💬 Sent] ${user.displayName}: ${text}`);
+
+                        const timer = setTimeout(() => {
+                            userMessageBuffer.delete(userId);
+                        }, MERGE_WINDOW_MS);
+
+                        userMessageBuffer.set(userId, {
+                            messageId: sent.id,
+                            text: text,
+                            timer,
+                        });
                     }
+
                 } catch (e) {
-                    console.error('Transcription error:', e.message);
+                    console.error('[❌ Error]', e.message);
                 }
-            });
-
-            // When audio stream closes, end the write stream gracefully
-            audioStream.on('close', () => {
-                opusDecoder.end();
-            });
-
-            opusDecoder.on('end', () => {
-                writeStream.end();
             });
         });
 
-        // Save connection for /stoplisten
         interaction.client.voiceListeners = interaction.client.voiceListeners || new Map();
         interaction.client.voiceListeners.set(interaction.guildId, {
             connection,
