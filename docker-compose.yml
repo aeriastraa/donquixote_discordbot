@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  donquixote-bot:
+    build: .
+    container_name: donquixote-bot
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env
+    volumes:
+      - ./tmp:/app/tmp
+    networks:
+      - bot-network
+
+networks:
+  bot-network:
+    driver: bridge
