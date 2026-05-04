@@ -1,26 +1,26 @@
-# 🤖 My Discord Bot
+# 🤖 Donquixote Discord Bot
 
-A Discord bot with real-time **voice transcription** powered by [Groq's free Whisper API](https://console.groq.com). Supports **multiple languages** including Indonesian, Thai, Vietnamese, Tagalog, and more.
+A Discord bot with real-time **voice transcription** and **text-to-speech** powered by free APIs. Supports multiple Southeast Asian languages including Indonesian, Thai, Vietnamese, Filipino, and more.
 
 ---
 
 ## ✨ Features
 
-- 🎙️ Real-time voice transcription in voice channels
-- 🌏 Multilingual support (auto-detects language)
+- 🎙️ Real-time voice transcription using [Groq's free Whisper API](https://console.groq.com)
+- 🔊 Text-to-speech in voice channels using [edge-tts](https://github.com/rany2/edge-tts) (free, no API key)
+- 🌏 Multilingual TTS with male/female voice options per user
 - 💬 Smart message merging — same user's speech appended to one message
 - 🏓 Ping command to check bot latency
-- ⚡ Low CPU usage (transcription handled by Groq API)
+- ⚡ Near-zero CPU usage (transcription handled by Groq API)
 - 🆓 Completely free to run
 
 ---
 
 ## 📋 Requirements
 
-Before you start, make sure you have these installed:
-
 - [Node.js](https://nodejs.org/) v18 or higher
 - [Git](https://git-scm.com/)
+- [Python](https://www.python.org/) (for edge-tts)
 - [ffmpeg](https://ffmpeg.org/) added to system PATH
 - A [Discord Developer Account](https://discord.com/developers)
 - A [Groq Account](https://console.groq.com) (free, no credit card)
@@ -32,8 +32,8 @@ Before you start, make sure you have these installed:
 ### Step 1 — Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/your-repo-name.git
-cd your-repo-name
+git clone https://github.com/aeriastraa/donquixote_discordbot.git
+cd donquixote_discordbot
 ```
 
 ### Step 2 — Install Node.js dependencies
@@ -42,17 +42,39 @@ cd your-repo-name
 npm install
 ```
 
-### Step 3 — Install ffmpeg
+### Step 3 — Install edge-tts (for TTS)
+
+```bash
+pip install edge-tts
+```
+
+Verify it works:
+```bash
+edge-tts --text "Hello" --write-media test.mp3
+```
+
+### Step 4 — Install ffmpeg
 
 **Windows:**
 1. Download from https://www.gyan.dev/ffmpeg/builds/ → `ffmpeg-release-essentials.zip`
 2. Extract to `C:\ffmpeg`
 3. Add `C:\ffmpeg\bin` to your system PATH:
    - Press `Win + S` → search "Environment Variables"
-   - Click "Edit the system environment variables"
    - Under System variables → find **Path** → Edit → New → type `C:\ffmpeg\bin`
    - Click OK on all windows
-4. Verify: open a new terminal and run `ffmpeg -version`
+4. Verify: `ffmpeg -version`
+
+**Mac:**
+```bash
+brew install ffmpeg
+```
+
+**Linux:**
+```bash
+sudo apt install ffmpeg
+```
+
+---
 
 ## 🔑 Getting Your API Keys
 
@@ -75,7 +97,7 @@ npm install
    - ✅ Connect
    - ✅ Speak
    - ✅ Use Voice Activity
-4. Copy the generated URL and open it in your browser to invite the bot
+4. Copy the generated URL and open it in your browser
 
 ### Groq API Key (Free)
 
@@ -101,7 +123,7 @@ Fill in your `.env` file:
 BOT_TOKEN=your_discord_bot_token_here
 CLIENT_ID=your_discord_client_id_here
 
-# Groq (free Whisper API)
+# Groq (free Whisper API for transcription)
 GROQ_API_KEY=your_groq_api_key_here
 
 # Bot presence
@@ -119,12 +141,12 @@ ACTIVITY_STATUS=online
 ## ▶️ Running the Bot
 
 ```bash
-npm start
+node index.js
 ```
 
 You should see:
 ```
-Ready! Logged in as YourBot#1234
+Ready! Logged in as Donquixote#1234
 Commands deployed globally.
 Bot status set to: online
 ```
@@ -132,23 +154,18 @@ Bot status set to: online
 ### Run 24/7 with PM2 (optional)
 
 ```bash
-# Install PM2
 npm install -g pm2
-
-# Start bot
-pm2 start index.js --name "my-discord-bot"
-
-# Auto-restart on reboot
+pm2 start index.js --name "donquixote-bot"
 pm2 startup
 pm2 save
 ```
 
 Useful PM2 commands:
 ```bash
-pm2 logs my-discord-bot      # View live logs
-pm2 restart my-discord-bot   # Restart bot
-pm2 stop my-discord-bot      # Stop bot
-pm2 status                   # Check status
+pm2 logs donquixote-bot      # View live logs
+pm2 restart donquixote-bot   # Restart bot
+pm2 stop donquixote-bot      # Stop bot
+pm2 status                   # Check if running
 ```
 
 ---
@@ -158,10 +175,11 @@ pm2 status                   # Check status
 | Command | Description |
 |---|---|
 | `/ping` | Check the bot's latency |
-| `/join` | Bot joins your current voice channel |
+| `/join` | Bot joins your voice channel and watches current text channel for TTS |
 | `/leave` | Bot leaves the voice channel |
 | `/listen` | Start transcribing voice in your channel |
 | `/stoplisten` | Stop transcribing (bot stays in channel) |
+| `/setvoice` | Set your personal TTS language and gender |
 
 ---
 
@@ -177,44 +195,64 @@ User speaks in VC
 ```
 
 1. Join a voice channel
-2. Type `/listen` — bot joins and starts listening
+2. Type `/listen` in a text channel — bot starts listening
 3. Speak clearly for 2+ seconds, then pause
 4. Transcription appears in the text channel
-5. If you speak again within 30 seconds, text is **appended** to the same message
-6. Type `/stoplisten` to stop transcribing (bot stays in channel)
-7. Type `/leave` to make the bot leave the channel
+5. Speaking again within 30 seconds appends to the same message
+6. Type `/stoplisten` to stop (bot stays in channel)
+7. Type `/leave` to make the bot leave
 
-### Supported Languages
+---
 
-| Language | Country |
-|---|---|
-| Indonesian | 🇮🇩 Indonesia |
-| Thai | 🇹🇭 Thailand |
-| English | 🇸🇬 Singapore |
-| Filipino / Tagalog | 🇵🇭 Philippines |
-| Vietnamese | 🇻🇳 Vietnam |
-| + 95 other languages | 🌐 Auto-detected |
+## 🔊 How Text-to-Speech Works
 
-> 💡 **Tips for best accuracy:**
-> - Speak clearly and at a normal pace
-> - Speak full sentences rather than single words
-> - Use a decent microphone
-> - Speak for at least 2–3 seconds before pausing
+```
+User types message in TTS channel
+    → Bot reads message using edge-tts
+    → Audio played in voice channel
+```
+
+1. Join a voice channel
+2. Type `/join` in any text channel — bot joins your VC and watches **that** text channel
+3. Type `/setvoice` to pick your language and gender (saved per user)
+4. Type any message in that channel — bot speaks it out loud in your chosen voice
+5. Type `/leave` to stop
+
+---
+
+## 🌏 Supported TTS Voices
+
+| Language | Female | Male |
+|---|---|---|
+| 🇺🇸 English | ✅ | ✅ |
+| 🇮🇩 Indonesian | ✅ | ✅ |
+| 🇹🇭 Thai | ✅ | ✅ |
+| 🇻🇳 Vietnamese | ✅ | ✅ |
+| 🇵🇭 Filipino | ✅ | ✅ |
+| 🇸🇬 Singapore English | ✅ | ✅ |
+| 🇨🇳 Chinese | ✅ | ✅ |
+| 🇯🇵 Japanese | ✅ | ✅ |
+| 🇰🇷 Korean | ✅ | ✅ |
+| 🇲🇾 Malay | ✅ | ✅ |
+
+> 💡 Each user sets their own voice with `/setvoice` — it's saved per user independently.
 
 ---
 
 ## 📁 Project Structure
 
 ```
-your-bot/
+donquixote_discordbot/
 ├── commands/
 │   ├── ping.js           # Ping command
-│   ├── join.js           # Join voice channel
+│   ├── join.js           # Join VC + start TTS session
 │   ├── leave.js          # Leave voice channel
 │   ├── listen.js         # Start voice transcription
-│   └── stoplisten.js     # Stop voice transcription
+│   ├── stoplisten.js     # Stop voice transcription
+│   └── setvoice.js       # Set personal TTS voice
 ├── utils/
-│   └── transcribe.js     # Groq Whisper API integration
+│   ├── transcribe.js     # Groq Whisper API integration
+│   └── voices.js         # Shared voice map for TTS
 ├── tmp/                  # Temporary audio files (auto-created, git-ignored)
 ├── index.js              # Main bot file
 ├── .env                  # Your secrets (git-ignored)
@@ -230,9 +268,12 @@ your-bot/
 |---|---|
 | `discord.js` | Discord API |
 | `@discordjs/voice` | Voice channel support |
-| `@discordjs/opus` / `opusscript` | Opus audio decoding |
+| `@discordjs/opus` | Opus audio decoding |
 | `prism-media` | Audio stream processing |
-| `groq-sdk` | Groq Whisper API client |
+| `groq-sdk` | Groq Whisper API for transcription |
+| `dotenv` | Environment variable loader |
+| `nodemon` | Auto-restart on file changes (dev) |
+| `edge-tts` (Python) | Free Microsoft TTS engine |
 
 ---
 
@@ -245,9 +286,11 @@ your-bot/
 | No transcription appearing | Make sure `GROQ_API_KEY` is set in `.env` |
 | `ffmpeg not found` error | Make sure ffmpeg is added to system PATH |
 | Bot joins but doesn't hear audio | `selfDeaf` must be `false` in `listen.js` |
-| `[🔇 Silence] Skipped` every time | Speak louder or check your microphone |
-| Bot leaves on `/stoplisten` | Use the latest `stoplisten.js` from this repo |
-| Groq rate limit hit | Free tier allows 28,800 sec/day (~8 hours) |
+| TTS not speaking | Make sure you typed in the same channel where `/join` was used |
+| `/setvoice` not working | Restart bot after deploying new commands |
+| Bot leaves after 2-5 mins | Keepalive is in `join.js` — make sure you're using latest version |
+| Groq rate limit hit | Free tier: 28,800 sec/day (~8 hours) |
+| `edge-tts` not found | Run `pip install edge-tts` and verify with `edge-tts --list-voices` |
 
 ---
 
@@ -259,7 +302,7 @@ your-bot/
 | Requests per minute | 20 |
 | Cost | $0 (completely free) |
 
-> If you exceed the daily limit, the bot will log a Groq error and skip transcription until the limit resets (midnight UTC).
+> If you exceed the daily limit, the bot will log a Groq error and skip transcription until the limit resets at midnight UTC.
 
 ---
 
@@ -272,5 +315,6 @@ MIT — feel free to use and modify.
 ## 🙏 Credits
 
 - [Groq](https://groq.com) — free, ultra-fast Whisper API
-- [OpenAI Whisper](https://github.com/openai/whisper) — the underlying ASR model
+- [edge-tts](https://github.com/rany2/edge-tts) — free Microsoft TTS
+- [OpenAI Whisper](https://github.com/openai/whisper) — underlying ASR model
 - [discord.js](https://discord.js.org) — Discord API library

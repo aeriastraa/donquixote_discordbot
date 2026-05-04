@@ -6,8 +6,6 @@
 *.mp3
 *.ogg
 
-# Whisper.cpp (too large, not our code)
-whisper.cpp/
 
 # Temp audio files
 tmp/
