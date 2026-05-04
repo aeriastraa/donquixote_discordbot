@@ -141,7 +141,7 @@ ACTIVITY_STATUS=online
 ## ▶️ Running the Bot
 
 ```bash
-node index.js
+npm start
 ```
 
 You should see:
