@@ -10,16 +10,6 @@ const {
 const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const VOICE_MAP = {
-    'en': 'en-US-AriaNeural',
-    'id': 'id-ID-ArdiNeural',
-    'th': 'th-TH-NiwatNeural',
-    'vi': 'vi-VN-HoaiMyNeural',
-    'fil': 'fil-PH-BlessicaNeural',
-    'zh': 'zh-CN-XiaoxiaoNeural',
-    'ja': 'ja-JP-NanamiNeural',
-    'ko': 'ko-KR-SunHiNeural',
-};
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('join')
